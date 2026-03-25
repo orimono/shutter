@@ -53,7 +53,7 @@ func TestConfig(t *testing.T) {
 	})
 
 	t.Run("Load default config with env", func(t *testing.T) {
-		os.Setenv("HARI_CONFIG_PATH", "./testdata/config.json")
+		os.Setenv("SHUTTER_CONFIG_PATH", "./testdata/config.json")
 		_, err := config.Load()
 		if err != nil {
 			t.Errorf("Should have been no error occurs, got: %v", err)

@@ -58,9 +58,9 @@ func ReadFromFile(path string, cfg *Config) error {
 }
 
 func Load() (*Config, error) {
-	cfgPath := os.Getenv("HARI_CONFIG_PATH")
+	cfgPath := os.Getenv("SHUTTER_CONFIG_PATH")
 	if cfgPath == "" {
-		home := os.Getenv("HARI_HOME")
+		home := os.Getenv("SHUTTER_HOME")
 		if home == "" {
 			home = "."
 		}
