@@ -22,7 +22,7 @@ func main() {
 	cfg := config.MustLoad()
 	logger.Init(cfg.LogLevel)
 	client := ws.NewClient(cfg)
-	go client.Serve(ctx)
+	go client.Run(ctx)
 
 	reporter := reporter.NewReporter(client)
 

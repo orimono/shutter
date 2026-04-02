@@ -34,7 +34,10 @@ func (s *Session) run(ctx context.Context) {
 	go s.writerLoop(ctx)
 	go s.setHeartbeat(ctx)
 
-	<-ctx.Done()
+	select {
+	case <-ctx.Done():
+	case <-s.done:
+	}
 	s.conn.Close()
 }
 

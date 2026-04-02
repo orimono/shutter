@@ -2,40 +2,57 @@ package ws
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/orimono/shutter/internal/config"
 	"github.com/orimono/shutter/internal/protocol"
+	"github.com/orimono/shutter/internal/util"
 )
 
 type Client struct {
 	cfg     *config.Config
 	session *Session
-	ready   chan *Session
+	ready   chan struct{}
 }
 
 func NewClient(cfg *config.Config) *Client {
 	return &Client{
 		cfg:   cfg,
-		ready: make(chan *Session, 1),
+		ready: make(chan struct{}, 1),
 	}
 }
 
-func (c *Client) Serve(ctx context.Context) {
+func (c *Client) Run(ctx context.Context) {
 	dialer := websocket.DefaultDialer
-	conn, _, err := dialer.Dial(c.cfg.ServerURL, nil)
-	if err != nil {
-		slog.Error("Failed to connect to server", "error", err)
-		return
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		util.DrainChan(c.ready)
+		conn, _, err := dialer.Dial(c.cfg.ServerURL, nil)
+		if err != nil {
+			slog.Error("Failed to connect to server", "error", err)
+			time.Sleep(time.Duration(c.cfg.RetryInterval))
+			continue
+		}
+		c.session = NewSession(conn, c.cfg)
+		c.ready <- struct{}{}
+		c.session.run(ctx)
 	}
-	c.session = NewSession(conn, c.cfg)
-	c.ready <- c.session
-	c.session.run(ctx)
 }
 
 func (c *Client) Send(data []byte) error {
-	session := <-c.ready
+	session := c.session
+	if session == nil {
+		return fmt.Errorf("no active session")
+	}
 	session.send <- protocol.Message{
 		Type: websocket.TextMessage,
 		Data: data,
@@ -43,6 +60,6 @@ func (c *Client) Send(data []byte) error {
 	return nil
 }
 
-func (c *Client) Ready() <-chan *Session {
+func (c *Client) Ready() <-chan struct{} {
 	return c.ready
 }
