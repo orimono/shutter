@@ -23,7 +23,7 @@ func (c *MemoryCollector) Capability() ito.Capability {
 }
 
 func (c *MemoryCollector) Interval() time.Duration {
-	return time.Second * 30
+	return time.Second * 5
 }
 
 func (c *MemoryCollector) Collect(ctx context.Context) (any, error) {
@@ -33,5 +33,10 @@ func (c *MemoryCollector) Collect(ctx context.Context) (any, error) {
 	}
 
 	slog.Debug("collected memory", "used_percent", v.UsedPercent)
-	return ito.MemoryMetrics{}, nil
+	return ito.MemoryMetrics{
+		Total:       v.Total,
+		Used:        v.Used,
+		Free:        v.Free,
+		UsedPercent: v.UsedPercent,
+	}, nil
 }

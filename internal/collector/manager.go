@@ -12,14 +12,10 @@ import (
 type Manager struct {
 	nodeID     string
 	collectors []Collector
-	out        chan<- ito.Telemetry
+	out        chan ito.Telemetry
 }
 
-func NewManager() *Manager {
-	nodeID, err := ito.GenerateNodeID("app")
-	if err != nil {
-		panic("Failed to get nodeID")
-	}
+func NewManager(nodeID string) *Manager {
 	return &Manager{
 		nodeID:     nodeID,
 		collectors: make([]Collector, 0),
@@ -29,6 +25,10 @@ func NewManager() *Manager {
 
 func (m *Manager) AddCollector(c Collector) {
 	m.collectors = append(m.collectors, c)
+}
+
+func (m *Manager) Out() <-chan ito.Telemetry {
+	return m.out
 }
 
 func (m *Manager) Manifest() map[string]ito.Capability {

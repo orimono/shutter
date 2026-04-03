@@ -23,7 +23,13 @@ func main() {
 	cfg := config.MustLoad()
 	logger.Init(cfg.LogLevel)
 
-	manager := collector.NewManager()
+	nodeID, err := ito.GenerateNodeID("")
+	if err != nil {
+		slog.Error("failed to generate node ID", "err", err)
+		return
+	}
+
+	manager := collector.NewManager(nodeID)
 	manager.AddCollector(&subsystem.MemoryCollector{})
 
 	client := ws.NewClient(cfg)
@@ -39,17 +45,12 @@ func main() {
 		}
 
 		joinPacket := &ito.JoinPacket{
+			NodeID:       nodeID,
 			Hostname:     hostname,
 			OS:           runtime.GOOS,
 			Arch:         runtime.GOARCH,
 			Tags:         cfg.Tags,
 			TaskManifest: manager.Manifest(),
-		}
-
-		joinPacket.NodeID, err = ito.GenerateNodeID("")
-		if err != nil {
-			slog.Error("failed to generate node ID", "err", err)
-			return
 		}
 
 		data, err := json.Marshal(joinPacket)
@@ -63,6 +64,19 @@ func main() {
 	}()
 
 	go manager.Start(ctx)
+
+	go func() {
+		for t := range manager.Out() {
+			data, err := json.Marshal(t)
+			if err != nil {
+				slog.Error("failed to marshal telemetry", "err", err)
+				continue
+			}
+			if err := client.Send(data); err != nil {
+				slog.Warn("failed to send telemetry", "err", err)
+			}
+		}
+	}()
 
 	<-ctx.Done()
 }
