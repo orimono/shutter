@@ -3,6 +3,8 @@ package collector
 import (
 	"context"
 	"log/slog"
+	"runtime"
+	"slices"
 	"sync"
 	"time"
 
@@ -12,6 +14,7 @@ import (
 type Manager struct {
 	nodeID     string
 	collectors []Collector
+	executors  []Executor
 	out        chan ito.Telemetry
 }
 
@@ -19,11 +22,19 @@ func NewManager(nodeID string) *Manager {
 	return &Manager{
 		nodeID:     nodeID,
 		collectors: make([]Collector, 0),
+		executors:  make([]Executor, 0),
 		out:        make(chan ito.Telemetry, 100),
 	}
 }
 
 func (m *Manager) AddCollector(c Collector) {
+	platforms := c.Capability().Platforms
+	if len(platforms) > 0 {
+		if !slices.Contains(platforms, runtime.GOOS) {
+			slog.Info("skipping collector: unsupported platform", "name", c.Name(), "platform", runtime.GOOS)
+			return
+		}
+	}
 	m.collectors = append(m.collectors, c)
 }
 
@@ -31,10 +42,22 @@ func (m *Manager) Out() <-chan ito.Telemetry {
 	return m.out
 }
 
+func (m *Manager) AddExecutor(e Executor) {
+	platforms := e.Capability().Platforms
+	if len(platforms) > 0 && !slices.Contains(platforms, runtime.GOOS) {
+		slog.Info("skipping executor: unsupported platform", "name", e.Name(), "platform", runtime.GOOS)
+		return
+	}
+	m.executors = append(m.executors, e)
+}
+
 func (m *Manager) Manifest() map[string]ito.Capability {
-	manifest := make(map[string]ito.Capability, len(m.collectors))
+	manifest := make(map[string]ito.Capability, len(m.collectors)+len(m.executors))
 	for _, c := range m.collectors {
 		manifest[c.Name()] = c.Capability()
+	}
+	for _, e := range m.executors {
+		manifest[e.Name()] = e.Capability()
 	}
 	return manifest
 }

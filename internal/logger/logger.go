@@ -1,6 +1,9 @@
 package logger
 
-import "log/slog"
+import (
+	"log/slog"
+	"os"
+)
 
 type LogLevel string
 
@@ -11,12 +14,15 @@ var levelMap = map[LogLevel]slog.Level{
 	"error": slog.LevelError,
 }
 
-var programLevel = &slog.LevelVar{}
-
 func Init(cfgLevel LogLevel) {
-	if level, ok := levelMap[cfgLevel]; ok {
-		programLevel.Set(level)
-	} else {
-		programLevel.Set(levelMap["info"])
+	level, ok := levelMap[cfgLevel]
+	if !ok {
+		level = slog.LevelInfo
 	}
+
+	programLevel := new(slog.LevelVar)
+	programLevel.Set(level)
+
+	h := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: programLevel})
+	slog.SetDefault(slog.New(h))
 }

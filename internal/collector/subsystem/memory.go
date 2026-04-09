@@ -17,6 +17,7 @@ func (c *MemoryCollector) Name() string {
 
 func (c *MemoryCollector) Capability() ito.Capability {
 	return ito.Capability{
+		Kind:      "collector",
 		Version:   "0.1.0",
 		Platforms: []string{"linux", "darwin", "windows"},
 	}

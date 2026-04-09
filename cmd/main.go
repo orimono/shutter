@@ -31,6 +31,10 @@ func main() {
 
 	manager := collector.NewManager(nodeID)
 	manager.AddCollector(&subsystem.MemoryCollector{})
+	manager.AddCollector(&subsystem.CPUCollector{})
+	manager.AddCollector(&subsystem.DiskCollector{})
+	manager.AddCollector(&subsystem.NetworkCollector{})
+	manager.AddCollector(&subsystem.LoadCollector{})
 
 	client := ws.NewClient(cfg)
 	go client.Run(ctx)
