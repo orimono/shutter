@@ -8,6 +8,8 @@ import (
 	"runtime"
 
 	"github.com/orimono/ito"
+	"errors"
+
 	"github.com/orimono/shutter/internal/collector"
 	"github.com/orimono/shutter/internal/collector/subsystem"
 	"github.com/orimono/shutter/internal/config"
@@ -77,7 +79,11 @@ func main() {
 				continue
 			}
 			if err := client.Send(data); err != nil {
-				slog.Warn("failed to send telemetry", "err", err)
+				if errors.Is(err, ws.ErrNoSession) {
+					slog.Debug("failed to send telemetry", "err", err)
+				} else {
+					slog.Warn("failed to send telemetry", "err", err)
+				}
 			}
 		}
 	}()

@@ -2,8 +2,10 @@ package ws
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -12,8 +14,11 @@ import (
 	"github.com/orimono/shutter/internal/util"
 )
 
+var ErrNoSession = errors.New("no active session")
+
 type Client struct {
 	cfg     *config.Config
+	mu      sync.RWMutex
 	session *Session
 	ready   chan struct{}
 }
@@ -42,16 +47,28 @@ func (c *Client) Run(ctx context.Context) {
 			time.Sleep(time.Duration(c.cfg.RetryInterval))
 			continue
 		}
-		c.session = NewSession(conn, c.cfg)
+
+		s := NewSession(conn, c.cfg)
+		c.mu.Lock()
+		c.session = s
+		c.mu.Unlock()
+
 		c.ready <- struct{}{}
-		c.session.run(ctx)
+		s.run(ctx)
+
+		c.mu.Lock()
+		c.session = nil
+		c.mu.Unlock()
 	}
 }
 
 func (c *Client) Send(data []byte) error {
+	c.mu.RLock()
 	session := c.session
+	c.mu.RUnlock()
+
 	if session == nil {
-		return fmt.Errorf("no active session")
+		return fmt.Errorf("%w", ErrNoSession)
 	}
 	session.send <- protocol.Message{
 		Type: websocket.TextMessage,
